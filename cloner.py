@@ -167,16 +167,82 @@ def restore(s, tid, d):
     print(f"\n{G}✔ Done! Pasted in {int(time.time() - t0)} seconds.{N}")
 
 
+def template_data(s, link):
+    """Read a Server Template link (bot only needed in the TARGET server)."""
+    code = link.strip().split("?")[0].rstrip("/").split("/")[-1]
+    print(f"{C}[1/2] Reading template...{N}")
+    r = api(s, "GET", f"/guilds/templates/{code}")
+    if r.status_code != 200:
+        sys.exit(f"{R}Template not found or invalid link ({r.status_code}).{N}")
+    g = r.json()["serialized_source_guild"]
+
+    roles, every = [], None
+    for i, ro in enumerate(g.get("roles", [])):
+        ro = dict(ro)
+        ro["id"] = str(ro["id"])
+        ro["position"] = ro.get("position", i)
+        ro["permissions"] = str(ro.get("permissions", 0))
+        ro["color"] = ro.get("color", 0)
+        ro["hoist"] = ro.get("hoist", False)
+        ro["mentionable"] = ro.get("mentionable", False)
+        ro["managed"] = False
+        if ro.get("name") == "@everyone" and every is None:
+            every = ro["id"]
+        roles.append(ro)
+    if every is None and roles:
+        every = roles[0]["id"]
+
+    chans = []
+    for i, c in enumerate(g.get("channels", [])):
+        c = dict(c)
+        c["id"] = str(c["id"])
+        c["position"] = c.get("position", i)
+        c["parent_id"] = str(c["parent_id"]) if c.get("parent_id") is not None else None
+        ows = []
+        for o in c.get("permission_overwrites", []):
+            is_role = o.get("type") in (0, "role")
+            ows.append({"id": str(o["id"]), "type": 0 if is_role else 1,
+                        "allow": str(o.get("allow", 0)), "deny": str(o.get("deny", 0))})
+        c["permission_overwrites"] = ows
+        chans.append(c)
+
+    data = {
+        "guild_id": every,
+        "name": g.get("name"),
+        "icon": None,
+        "verification_level": g.get("verification_level"),
+        "default_message_notifications": g.get("default_message_notifications"),
+        "explicit_content_filter": g.get("explicit_content_filter"),
+        "afk_timeout": g.get("afk_timeout"),
+        "afk_channel_id": str(g["afk_channel_id"]) if g.get("afk_channel_id") is not None else None,
+        "system_channel_id": str(g["system_channel_id"]) if g.get("system_channel_id") is not None else None,
+        "roles": roles,
+        "channels": chans,
+    }
+    with open(os.path.join(BASE, "backups", f"template_{code}.json"), "w") as f:
+        json.dump(data, f)
+    print(f"{G}Template read: {len(roles)} roles, {len(chans)} channels{N}")
+    return data
+
+
 def main():
     print(f"{R}=== CRIMSON SERVER CLONER ==={N}")
-    print("Bot must be in BOTH servers with Administrator permission.\n")
+    print(f"{R}[1]{N} Direct copy  (bot must be in BOTH servers)")
+    print(f"{R}[2]{N} Template link (bot only in TARGET server)\n")
+    mode = input("Select mode [1/2]: ").strip()
+    print("\nBot needs Administrator in the target server.\n")
     token = os.environ.get("CLONER_TOKEN") or input("Bot token: ").strip()
     s = {"Authorization": f"Bot {token}", "Content-Type": "application/json", "User-Agent": UA}
     if api(s, "GET", "/users/@me").status_code != 200:
         sys.exit(f"{R}Invalid bot token.{N}")
 
-    src = input("Source server ID (copy FROM): ").strip()
-    data = backup(s, src)
+    if mode == "2":
+        link = input("Server template link (discord.new/...): ").strip()
+        data = template_data(s, link)
+    else:
+        src = input("Source server ID (copy FROM): ").strip()
+        data = backup(s, src)
+
     tid = input("Target server ID (paste TO): ").strip()
     if input(f"{Y}This DELETES all channels/roles in target. Type yes to continue: {N}").strip().lower() != "yes":
         sys.exit("Cancelled.")

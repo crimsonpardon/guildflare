@@ -58,18 +58,27 @@ Your token and owner ID are saved in a `.env` file inside the bot's folder in `a
 
 ## Option 3: Server Cloner
 
-1. Pick **3** and paste your bot token.
+Two modes:
+
+**Mode 1 - Direct copy** (bot must be in both servers)
+1. Paste your bot token.
 2. Paste the **source server ID** (copy FROM). The backup is saved in `backups/`.
 3. Paste the **target server ID** (paste TO) and type `yes`.
-4. Roles, channels, categories, permissions and server settings are pasted. A small server takes about 30 seconds.
+
+**Mode 2 - Template link** (bot only in the target server)
+1. In the source server: Server Settings, Server Template, create the template and copy the link.
+2. Paste your bot token and the template link.
+3. Paste the **target server ID** and type `yes`.
+
+Roles, channels, categories, permissions and server settings are pasted. A small server takes about 30 seconds.
 
 Requirements:
 
 - Use a **bot token** only. User tokens (self-bots) are against Discord's rules.
-- The bot must be in both servers with the **Administrator** permission.
+- The bot needs the **Administrator** permission in the target server.
 - The bot's role must be above the other roles in the target server.
 
-Not copied: messages, emojis, bots and member-specific permissions.
+Not copied: messages, emojis, bots and member-specific permissions. Template mode also skips the server icon.
 
 ## Add or rename options
 
